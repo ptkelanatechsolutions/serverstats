@@ -201,6 +201,73 @@ function killDaemon(): boolean {
   return true;
 }
 
+/** Check if a process identified by PID has the serverstat env marker. */
+function isServerstatDaemon(pid: number): boolean {
+  try {
+    if (process.platform === "linux") {
+      const env = readFileSync(`/proc/${pid}/environ`, "utf-8");
+      return env.includes("__SERVERSTAT_DAEMON=1");
+    }
+    if (process.platform === "darwin") {
+      const procEnv = execSync(
+        `ps eww ${pid} 2>/dev/null | tr ' ' '\\n' | grep __SERVERSTAT_DAEMON 2>/dev/null || true`,
+        { encoding: "utf-8", timeout: 3000 },
+      ).trim();
+      return procEnv.includes("__SERVERSTAT_DAEMON");
+    }
+  } catch {
+    // /proc not available or process gone
+  }
+  return false;
+}
+
+/** Detect what process is listening on a port. Returns "serverstat" if ours, process name or null. */
+function detectProcessOnPort(port: number): string | null {
+  try {
+    if (process.platform === "linux") {
+      const out = execSync(`ss -tlnp src :${port} 2>/dev/null || ss -tlnp 2>/dev/null | grep ":${port} "`, {
+        encoding: "utf-8",
+        timeout: 3000,
+      }).trim();
+      // Parse PID from: users:(("next-server",pid=123,fd=21))
+      const pidMatch = out.match(/pid=(\d+)/);
+      if (pidMatch) {
+        const pid = parseInt(pidMatch[1]);
+        if (pid > 0 && isServerstatDaemon(pid)) return "serverstat";
+      }
+      // Fallback: parse process name anyway
+      const nameMatch = out.match(/"([^"]+)"/);
+      return nameMatch ? nameMatch[1] : null;
+    }
+    if (process.platform === "darwin") {
+      const lsof = execSync(`lsof -i :${port} -sTCP:LISTEN -F p 2>/dev/null`, {
+        encoding: "utf-8", timeout: 3000,
+      }).trim();
+      const pidLines = lsof.split("\n").filter(l => l.startsWith("p"));
+      for (const line of pidLines) {
+        const pid = parseInt(line.slice(1));
+        if (pid > 0 && isServerstatDaemon(pid)) return "serverstat";
+      }
+      // Fallback: lsof -F c for name
+      const nameOut = execSync(`lsof -i :${port} -sTCP:LISTEN -F c 2>/dev/null`, {
+        encoding: "utf-8", timeout: 3000,
+      }).trim();
+      const nameMatch = nameOut.match(/c(.+)/);
+      return nameMatch ? nameMatch[1] : null;
+    }
+    if (process.platform === "win32") {
+      const ps = execSync(
+        `powershell -NoProfile -Command "$p=Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess; if($p){(Get-Process -Id $p).ProcessName}"`,
+        { encoding: "utf-8", timeout: 3000 },
+      ).trim();
+      return ps || null;
+    }
+  } catch {
+    // command not available
+  }
+  return null;
+}
+
 /** Try to find and kill a process by name or listening port. */
 function findAndKillDaemon(): boolean {
   try {
@@ -384,7 +451,7 @@ async function startServer(port: number, host: string): Promise<void> {
     process.exit(1);
   }
 
-  // Probe port (only when no existing serverstat owns it — checked by caller)
+  // Probe port — check if it's us or another app
   const http = await import("node:http");
   const probeUrl = `http://localhost:${port}`;
   try {
@@ -400,7 +467,19 @@ async function startServer(port: number, host: string): Promise<void> {
       });
     });
   } catch {
-    console.error(`Error: Port ${port} is already in use by another application.`);
+    // Port is in use — detect who owns it
+    const procName = detectProcessOnPort(port);
+    if (procName === "serverstat") {
+      // Confirmed ours via env marker
+      console.log(`ℹ️  ServerStat is already running on http://localhost:${port}`);
+      console.log(`\nTo stop: serverstat stop`);
+      process.exit(0);
+    }
+    console.error(
+      `Error: Port ${port} is already in use` +
+        (procName ? ` by "${procName}".` : ".") +
+        `\n  Use serverstat --port <port> to choose a different port.`,
+    );
     process.exit(1);
   }
 
@@ -411,6 +490,9 @@ async function startServer(port: number, host: string): Promise<void> {
     PORT: String(port),
     HOSTNAME: host,
     NODE_PATH: resolve(PACKAGE_ROOT, "node_modules"),
+    // Marker so we can identify this exact daemon process later
+    __SERVERSTAT_DAEMON: "1",
+    SERVERSTAT_PORT: String(port),
   };
 
   // Set argv0 so the process appears as "serverstat-daemon" in htop/btop/ps
