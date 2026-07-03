@@ -9,6 +9,7 @@
     "dev:ui": "pnpm --filter serverstat-ui dev",
     "lint": "eslint .",
     "typecheck": "pnpm -r typecheck",
+    "quality": "pnpm lint && pnpm typecheck && pnpm format:check",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

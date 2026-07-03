@@ -7,11 +7,9 @@ import { readFileSync, existsSync, unlinkSync, writeFileSync, mkdirSync } from "
 import { createRequire } from "node:module";
 
 // ---- Setup ----
-// cli/src/index.ts → cli/app/dist/index.js
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const _require = createRequire(import.meta.url);
 
-// Package root is cli/ (three levels up from app/dist/index.js)
 const PACKAGE_ROOT = resolve(__dirname, "..", "..");
 const UI_DIR = resolve(PACKAGE_ROOT, "app", "ui");
 
@@ -48,29 +46,145 @@ Examples:
   serverstat --host 0.0.0.0           Bind to all interfaces
   serverstat --port 8080 --host 0.0.0.0
   serverstat --host 0.0.0.0 --port 8080
+
+The server runs as a background daemon.
 `.trim();
 
-// ---- Argument Parsing ----
+// ---- Types ----
+interface ServerState {
+  pid: number;
+  port: number;
+  host: string;
+  version: string;
+}
+
 interface CLIOptions {
   port: number;
   host: string;
   showHelp: boolean;
   showVersion: boolean;
+  hasFlags: boolean;
 }
 
+// ---- State File (JSON) ----
+function getStatePath(): string {
+  return resolve(PACKAGE_ROOT, "app", "serverstat.json");
+}
+
+function readStateFile(): ServerState | null {
+  const path = getStatePath();
+  if (!existsSync(path)) return null;
+  try {
+    const raw = readFileSync(path, "utf-8").trim();
+    const state = JSON.parse(raw) as ServerState;
+    if (!state.pid || !state.port) return null;
+    return state;
+  } catch {
+    // Corrupt — remove it
+    try {
+      unlinkSync(path);
+    } catch {
+      /* ignore */
+    }
+    return null;
+  }
+}
+
+function writeStateFile(pid: number, port: number, host: string): string {
+  const path = getStatePath();
+  const dir = resolve(PACKAGE_ROOT, "app");
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  const state: ServerState = { pid, port, host, version: VERSION };
+  writeFileSync(path, JSON.stringify(state, null, 2) + "\n");
+  return path;
+}
+
+function removeStateFile(): void {
+  const path = getStatePath();
+  if (existsSync(path)) {
+    try {
+      unlinkSync(path);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+// ---- Process helpers ----
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Kill the daemon and remove state. Returns true if killed, false if not running. */
+function killDaemon(): boolean {
+  const state = readStateFile();
+
+  if (!state) {
+    return false;
+  }
+
+  if (!isProcessAlive(state.pid)) {
+    removeStateFile();
+    return false;
+  }
+
+  try {
+    process.kill(state.pid, "SIGTERM");
+    const start = Date.now();
+    while (Date.now() - start < 4000) {
+      if (!isProcessAlive(state.pid)) break;
+      const begin = Date.now();
+      while (Date.now() - begin < 100) {
+        /* busy-spin */
+      }
+    }
+
+    if (isProcessAlive(state.pid)) {
+      process.kill(state.pid, "SIGKILL");
+    }
+  } catch (err) {
+    const nodeErr = err as NodeJS.ErrnoException;
+    if (nodeErr.code !== "ESRCH") {
+      console.error(`Failed to stop process ${state.pid}: ${nodeErr.message}`);
+      return false;
+    }
+  }
+
+  removeStateFile();
+  return true;
+}
+
+/** Public stop — calls killDaemon and exits the process. */
+function stopDaemon(): void {
+  const killed = killDaemon();
+  if (!killed) {
+    console.error("Error: ServerStat is not running.");
+    process.exit(1);
+  }
+  console.log("✅ ServerStat stopped.");
+  process.exit(0);
+}
+
+// ---- Argument Parsing ----
 function parseArgs(argv: string[]): CLIOptions {
   const args = argv.slice(2);
 
   if (args.includes("--help") || args.includes("-h")) {
-    return { port: 3000, host: "localhost", showHelp: true, showVersion: false };
+    return { port: 3000, host: "localhost", showHelp: true, showVersion: false, hasFlags: false };
   }
 
   if (args.includes("--version") || args.includes("-v")) {
-    return { port: 3000, host: "localhost", showHelp: false, showVersion: true };
+    return { port: 3000, host: "localhost", showHelp: false, showVersion: true, hasFlags: false };
   }
 
   let port = 3000;
   let host = "localhost";
+  let hasFlags = false;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -89,6 +203,7 @@ function parseArgs(argv: string[]): CLIOptions {
         process.exit(1);
       }
       port = parsed;
+      hasFlags = true;
     } else if (arg === "--host") {
       const val = args[++i];
       if (val === undefined || val.startsWith("-")) {
@@ -97,6 +212,7 @@ function parseArgs(argv: string[]): CLIOptions {
         process.exit(1);
       }
       host = val;
+      hasFlags = true;
     } else {
       console.error(`Error: unknown option "${arg}"\n`);
       console.error(HELP_TEXT);
@@ -104,19 +220,17 @@ function parseArgs(argv: string[]): CLIOptions {
     }
   }
 
-  return { port, host, showHelp: false, showVersion: false };
+  return { port, host, showHelp: false, showVersion: false, hasFlags };
 }
 
 // ---- Resolve next binary ----
 function findNextEntry(): string {
-  // In development (pnpm workspace): resolve from ui/node_modules/next/package.json
   const devPath = resolve(PACKAGE_ROOT, "..", "ui", "node_modules", "next", "package.json");
   if (existsSync(devPath)) {
     const pkg = JSON.parse(readFileSync(devPath, "utf-8"));
     return resolve(dirname(devPath), pkg.bin?.next ?? "dist/bin/next");
   }
 
-  // In published package: resolve via module resolution from CLI's own dependencies
   try {
     const nextPkgPath = _require.resolve("next/package.json");
     const nextDir = dirname(nextPkgPath);
@@ -131,10 +245,9 @@ function findNextEntry(): string {
   }
 }
 
-// ---- Wait for server to be ready ----
+// ---- Wait for server ----
 async function waitForServer(url: string, timeoutMs = 15000): Promise<void> {
   const start = Date.now();
-  // Use dynamic import — http is required in Node but not in browser
   const http = await import("node:http");
   while (Date.now() - start < timeoutMs) {
     try {
@@ -149,95 +262,17 @@ async function waitForServer(url: string, timeoutMs = 15000): Promise<void> {
           reject(new Error("timeout"));
         });
       });
-      return; // server is up
+      return;
     } catch {
-      // Not ready yet — wait and retry
       await new Promise((r) => setTimeout(r, 500));
     }
   }
   throw new Error(`Server did not start within ${timeoutMs / 1000}s`);
 }
 
-// ---- Write PID file ----
-// ---- PID file ----
-function getPidPath(): string {
-  return resolve(PACKAGE_ROOT, "app", "serverstat.pid");
-}
-
-function writePidFile(pid: number): string {
-  const pidPath = getPidPath();
-  const pidDir = resolve(PACKAGE_ROOT, "app");
-  if (!existsSync(pidDir)) mkdirSync(pidDir, { recursive: true });
-  writeFileSync(pidPath, String(pid));
-  return pidPath;
-}
-
-function stopDaemon(): void {
-  const pidPath = getPidPath();
-
-  if (!existsSync(pidPath)) {
-    console.error("ServerStat is not running (no PID file found).");
-    process.exit(1);
-  }
-
-  const pid = parseInt(readFileSync(pidPath, "utf-8").trim(), 10);
-  if (!pid || isNaN(pid)) {
-    console.error("Invalid PID file. Removing...");
-    unlinkSync(pidPath);
-    process.exit(1);
-  }
-
-  try {
-    process.kill(pid, "SIGTERM");
-    // Give it a moment
-    const start = Date.now();
-    while (Date.now() - start < 3000) {
-      try {
-        process.kill(pid, 0); // check alive
-      } catch {
-        // process is gone
-        break;
-      }
-    }
-  } catch (err) {
-    const nodeErr = err as NodeJS.ErrnoException;
-    if (nodeErr.code === "ESRCH") {
-      // Process already dead — clean up
-    } else {
-      console.error(`Failed to stop process ${pid}: ${nodeErr.message}`);
-      process.exit(1);
-    }
-  }
-
-  unlinkSync(pidPath);
-  console.log("✅ ServerStat stopped.");
-  process.exit(0);
-}
-
-// ---- Main ----
-async function main(): Promise<void> {
-  const args = process.argv.slice(2);
-
-  // Handle "stop" command
-  if (args[0] === "stop") {
-    stopDaemon();
-  }
-
-  const options = parseArgs(process.argv);
-
-  if (options.showHelp) {
-    console.log(HELP_TEXT);
-    process.exit(0);
-  }
-
-  if (options.showVersion) {
-    console.log(VERSION);
-    process.exit(0);
-  }
-
-  const { port, host } = options;
-
-  // Check bundled UI exists
+// ---- Start server (extracted, resuable) ----
+async function startServer(port: number, host: string): Promise<void> {
+  // Check bundled UI
   if (!existsSync(resolve(UI_DIR, ".next", "BUILD_ID"))) {
     console.error(
       "Error: ServerStat UI is not built.\n\n" +
@@ -247,23 +282,23 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Check if port is already in use
+  // Probe port (only when no existing serverstat owns it — checked by caller)
   const http = await import("node:http");
   const probeUrl = `http://localhost:${port}`;
   try {
     await new Promise<void>((resolve, reject) => {
       const req = http.get(probeUrl, (res) => {
         res.resume();
-        reject(new Error("inuse")); // got response → port in use
+        reject(new Error("inuse"));
       });
-      req.on("error", () => resolve()); // connection refused → port free
+      req.on("error", () => resolve());
       req.setTimeout(1000, () => {
         req.destroy();
-        resolve(); // no response in 1s → assume free
+        resolve();
       });
     });
   } catch {
-    console.error(`Error: Port ${port} is already in use. Use --port to specify a different port.`);
+    console.error(`Error: Port ${port} is already in use by another application.`);
     process.exit(1);
   }
 
@@ -285,7 +320,6 @@ async function main(): Promise<void> {
 
   child.unref();
 
-  // Wait for server to be ready
   try {
     await waitForServer(`http://localhost:${port}`);
   } catch {
@@ -293,13 +327,74 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const pidPath = writePidFile(child.pid!);
+  const statePath = writeStateFile(child.pid!, port, host);
 
   console.log(`🚀 ServerStat v${VERSION} is running`);
   console.log(`   URL: http://${host}:${port}`);
   console.log(`   PID: ${child.pid}`);
-  console.log(`   PID file: ${pidPath}`);
+  console.log(`   State file: ${statePath}`);
   console.log(`\nTo stop: serverstat stop`);
+}
+
+// ---- Main ----
+async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+
+  // Handle stop command
+  if (args[0] === "stop") {
+    stopDaemon();
+  }
+
+  const options = parseArgs(process.argv);
+
+  if (options.showHelp) {
+    console.log(HELP_TEXT);
+    process.exit(0);
+  }
+
+  if (options.showVersion) {
+    console.log(VERSION);
+    process.exit(0);
+  }
+
+  // Check if service is already running
+  const state = readStateFile();
+  if (state && isProcessAlive(state.pid)) {
+    if (!options.hasFlags) {
+      // No flags — just show info
+      console.log(`ℹ️  ServerStat is already running`);
+      console.log(`   URL: http://${state.host}:${state.port}`);
+      console.log(`   PID: ${state.pid}`);
+      console.log(
+        `\nTo restart with different settings, use:\n   serverstat --port <port> --host <host>`,
+      );
+      console.log(`\nTo stop: serverstat stop`);
+      process.exit(0);
+    }
+
+    // Has flags — stop current, then start new
+    const samePort = options.port === state.port;
+    const sameHost = options.host === state.host;
+
+    if (samePort && sameHost) {
+      console.log(`ℹ️  ServerStat is already running on the same host:port`);
+      console.log(`   URL: http://${state.host}:${state.port}`);
+      process.exit(0);
+    }
+
+    console.log(`Stopping current server (http://${state.host}:${state.port}) ...`);
+    killDaemon();
+    console.log("Starting new instance...");
+    await startServer(options.port, options.host);
+    return;
+  }
+
+  // No running service — clean stale state and start fresh
+  if (state && !isProcessAlive(state.pid)) {
+    removeStateFile();
+  }
+
+  await startServer(options.port, options.host);
 }
 
 main();
