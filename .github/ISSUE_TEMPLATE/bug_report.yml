@@ -1,0 +1,125 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in ServerStat
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please fill in the details below.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: Clearly describe the bug
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      placeholder: |
+        1. Run 'serverstat --port 3000'
+        2. Open http://localhost:3000
+        3. Click the GPU tab
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should happen instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened? Include error logs if available.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Screenshots / Logs
+      placeholder: |
+        ```
+        $ serverstat
+        Error: Port 3000 is already in use.
+        ```
+    validations:
+      required: false
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: "e.g. Ubuntu 22.04, Windows 11, macOS 14"
+      placeholder: "Ubuntu 22.04"
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node.js Version
+      description: "Run `node --version`"
+      placeholder: "v20.11.0"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: ServerStat Version
+      description: "Run `serverstat --version`"
+      placeholder: "1.0.0-alpha.3"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of the project is affected?
+      options:
+        - CLI (serverstat commands, daemon)
+        - UI Dashboard (components, layout, theme)
+        - Data Collection (CPU, GPU, RAM, etc.)
+        - Build / CI
+        - Documentation
+    validations:
+      required: true
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser (UI issues only)
+      description: Which browser are you using?
+      options:
+        - N/A (CLI issue)
+        - Chrome
+        - Firefox
+        - Edge
+        - Safari
+        - Other
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched for existing similar issues
+          required: true
+        - label: The bug still occurs in the latest version
+          required: true
+        - label: I provided clear reproduction steps
+          required: true

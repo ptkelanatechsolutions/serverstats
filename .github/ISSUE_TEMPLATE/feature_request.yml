@@ -1,0 +1,81 @@
+name: Feature Request
+description: Suggest a new feature or enhancement for ServerStat
+title: "[Feature] "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for contributing! Please describe the feature you'd like to see.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Feature Description
+      description: Clearly describe the feature you want
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve?
+      placeholder: "I'm often frustrated when ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How should this feature work?
+      placeholder: "It would be helpful if serverstat had a command to ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any workarounds or alternative solutions you've tried?
+    validations:
+      required: false
+
+  - type: textarea
+    id: usage
+    attributes:
+      label: Usage Example
+      description: How would users interact with this feature?
+      placeholder: |
+        ```bash
+        serverstat --new-flag
+        ```
+    validations:
+      required: false
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected Component
+      multiple: true
+      options:
+        - CLI (commands, argument parsing, daemon)
+        - UI Dashboard (layout, theme, components)
+        - Data Collection (CPU, GPU, RAM, Disk, Network, Processes)
+        - Build / CI (pipeline, GitHub Actions, publish)
+        - Documentation (README, CONTRIBUTING, AGENTS)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched for existing feature requests
+          required: true
+        - label: This feature is specific to ServerStat
+          required: true
+        - label: I included a clear use case
+          required: true

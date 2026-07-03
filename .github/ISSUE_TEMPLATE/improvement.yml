@@ -1,0 +1,84 @@
+name: Improvement
+description: Suggest a refactor, optimization, or code quality enhancement for ServerStat
+title: "[Improvement] "
+labels: [improvement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve the codebase. Describe what needs to be improved and why.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Improvement Description
+      description: What part of the code needs improvement and why?
+      placeholder: "The code in ui/lib/system-stats.ts has duplicated logic when ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Current Problem
+      description: What's wrong with the current implementation?
+      placeholder: |
+        - Performance bottleneck in collectCpuInfo()
+        - Hard to maintain because ...
+        - Missing edge case handling when GPU is not detected
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: What should the improved implementation look like?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected Files
+      description: Select the files or areas affected
+      multiple: true
+      options:
+        - CLI (cli/src/index.ts)
+        - Bundle Script (cli/scripts/bundle-ui.js)
+        - UI Components (ui/components/)
+        - UI Primitives (ui/components/ui/)
+        - Data Collection (ui/lib/system-stats.ts)
+        - Types / Utils (ui/lib/data.ts, ui/lib/utils.ts)
+        - API Route (ui/app/api/stats/route.ts)
+        - CI/CD (.github/workflows/)
+        - Config / Monorepo (eslint, prettier, tsconfig, root configs)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Expected Impact
+      multiple: true
+      options:
+        - Performance improvement
+        - Better maintainability
+        - Reduced duplication
+        - Improved testability
+        - Better code consistency
+        - Better edge case handling
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I checked existing code to ensure no duplication
+          required: true
+        - label: This change is internal (no CLI / public API change)
+          required: true
+        - label: I'm willing to implement this if approved
+          required: true

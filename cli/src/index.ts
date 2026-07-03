@@ -225,10 +225,13 @@ function isServerstatDaemon(pid: number): boolean {
 function detectProcessOnPort(port: number): string | null {
   try {
     if (process.platform === "linux") {
-      const out = execSync(`ss -tlnp src :${port} 2>/dev/null || ss -tlnp 2>/dev/null | grep ":${port} "`, {
-        encoding: "utf-8",
-        timeout: 3000,
-      }).trim();
+      const out = execSync(
+        `ss -tlnp src :${port} 2>/dev/null || ss -tlnp 2>/dev/null | grep ":${port} "`,
+        {
+          encoding: "utf-8",
+          timeout: 3000,
+        },
+      ).trim();
       // Parse PID from: users:(("next-server",pid=123,fd=21))
       const pidMatch = out.match(/pid=(\d+)/);
       if (pidMatch) {
@@ -241,16 +244,18 @@ function detectProcessOnPort(port: number): string | null {
     }
     if (process.platform === "darwin") {
       const lsof = execSync(`lsof -i :${port} -sTCP:LISTEN -F p 2>/dev/null`, {
-        encoding: "utf-8", timeout: 3000,
+        encoding: "utf-8",
+        timeout: 3000,
       }).trim();
-      const pidLines = lsof.split("\n").filter(l => l.startsWith("p"));
+      const pidLines = lsof.split("\n").filter((l) => l.startsWith("p"));
       for (const line of pidLines) {
         const pid = parseInt(line.slice(1));
         if (pid > 0 && isServerstatDaemon(pid)) return "serverstat";
       }
       // Fallback: lsof -F c for name
       const nameOut = execSync(`lsof -i :${port} -sTCP:LISTEN -F c 2>/dev/null`, {
-        encoding: "utf-8", timeout: 3000,
+        encoding: "utf-8",
+        timeout: 3000,
       }).trim();
       const nameMatch = nameOut.match(/c(.+)/);
       return nameMatch ? nameMatch[1] : null;
