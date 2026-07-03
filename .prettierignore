@@ -1,0 +1,10 @@
+node_modules/
+.pnpm-store/
+.next/
+out/
+build/
+dist/
+cli/dist/
+*.tsbuildinfo
+pnpm-lock.yaml
+cli/ui/

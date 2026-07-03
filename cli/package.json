@@ -1,0 +1,50 @@
+{
+  "name": "serverstat",
+  "version": "1.0.0-alpha.1",
+  "description": "Server monitoring dashboard — real-time CPU, GPU, RAM, Disk, Network & process stats",
+  "type": "module",
+  "bin": {
+    "serverstat": "./app/dist/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "app",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc && node scripts/bundle-ui.js",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf app node_modules"
+  },
+  "dependencies": {
+    "next": "16.2.9",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "^5"
+  },
+  "keywords": [
+    "server",
+    "stats",
+    "monitoring",
+    "uptime",
+    "performance",
+    "metrics",
+    "dashboard"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ptkelanatechsolutions/serverstats.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ptkelanatechsolutions/serverstats/issues"
+  },
+  "homepage": "https://github.com/ptkelanatechsolutions/serverstats#readme"
+}

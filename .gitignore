@@ -1,0 +1,17 @@
+node_modules/
+.pnpm-store/
+out/
+build/
+dist/
+cli/dist/
+*.tsbuildinfo
+next-env.d.ts
+.env
+.env.local
+.env.*.local
+.next/
+cli/app/
+package-lock.json
+yarn.lock
+bun.lock
+docs/**

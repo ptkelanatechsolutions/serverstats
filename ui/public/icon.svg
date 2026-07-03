@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 560" width="32" height="32" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <!-- Background Gradient -->
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="75%">
+      <stop offset="0%" stop-color="#182030"/>
+      <stop offset="100%" stop-color="#0A0E17"/>
+    </radialGradient>
+    
+    <!-- Floor Shadow Gradient -->
+    <radialGradient id="shadowGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Isometric Face Gradients -->
+    <linearGradient id="topGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1E293B"/>
+      <stop offset="100%" stop-color="#0F172A"/>
+    </linearGradient>
+    <linearGradient id="leftGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="rightGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#334155"/>
+      <stop offset="100%" stop-color="#1E293B"/>
+    </linearGradient>
+    
+    <!-- Data Beam Gradient -->
+    <linearGradient id="beamFade" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#00E5FF" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#00E5FF" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Filters for Depth and Light -->
+    <filter id="layerShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="25" stdDeviation="15" flood-color="#000000" flood-opacity="0.7"/>
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="url(#bgGrad)"/>
+
+  <!-- Base Ambient Shadow -->
+  <ellipse cx="280" cy="485" rx="160" ry="60" fill="url(#shadowGrad)"/>
+
+  <!-- Server Stack Centered as One Group -->
+  <g id="ServerStackCentered" transform="translate(30 25)">
+
+    <!-- ================= LAYER 3 (BOTTOM SERVER BLADE) ================= -->
+    <g id="Layer3">
+      <!-- Top Face -->
+      <rect width="140" height="140" fill="url(#topGrad)" stroke="#475569" stroke-width="1.5" stroke-linejoin="round" transform="matrix(1, 0.5, -1, 0.5, 250, 280)"/>
+      <g transform="matrix(1, 0.5, -1, 0.5, 250, 280)">
+        <rect x="10" y="10" width="120" height="120" fill="none" stroke="#1E293B" stroke-width="2" rx="4"/>
+      </g>
+
+      <!-- Left Face (Cooling System) -->
+      <rect width="140" height="30" fill="url(#leftGrad)" stroke="#475569" stroke-width="1.5" stroke-linejoin="round" transform="matrix(-1, -0.5, 0, 1, 250, 420)"/>
+      <g transform="matrix(-1, -0.5, 0, 1, 250, 420)">
+        <rect x="20" y="10" width="40" height="10" fill="#020617" stroke="#1E293B" stroke-width="1" rx="2"/>
+        <rect x="80" y="10" width="40" height="10" fill="#020617" stroke="#1E293B" stroke-width="1" rx="2"/>
+        <line x1="25" y1="15" x2="55" y2="15" stroke="#334155" stroke-width="2" stroke-linecap="round"/>
+        <line x1="85" y1="15" x2="115" y2="15" stroke="#334155" stroke-width="2" stroke-linecap="round"/>
+      </g>
+
+      <!-- Right Face (Data Array) -->
+      <rect width="140" height="30" fill="url(#rightGrad)" stroke="#475569" stroke-width="1.5" stroke-linejoin="round" transform="matrix(1, -0.5, 0, 1, 250, 420)"/>
+      <g transform="matrix(1, -0.5, 0, 1, 250, 420)">
+        <rect x="15" y="10" width="80" height="10" fill="#020617" stroke="#1E293B" stroke-width="1" rx="2"/>
+        <rect x="18" y="13" width="74" height="4" fill="#00E5FF" rx="2" filter="url(#glow)"/>
+        <circle cx="115" cy="15" r="4" fill="#1E293B"/>
+        <circle cx="127" cy="15" r="4" fill="#00E5FF" filter="url(#glow)"/>
+      </g>
+    </g>
+
+    <!-- Physical Connections (L2 -> L3) -->
+    <g id="Cables2to3">
+      <!-- Data Uplink -->
+      <line x1="280" y1="325" x2="280" y2="405" stroke="#B400FF" stroke-width="3" stroke-linecap="round" filter="url(#glow)"/>
+      <circle cx="280" cy="325" r="3.5" fill="#B400FF"/>
+      <circle cx="280" cy="405" r="3.5" fill="#B400FF"/>
+      <!-- Structural Strut -->
+      <line x1="210" y1="320" x2="210" y2="400" stroke="#0F172A" stroke-width="5" stroke-linecap="round"/>
+      <line x1="210" y1="320" x2="210" y2="400" stroke="#334155" stroke-width="2" stroke-linecap="round"/>
+    </g>
+
+    <!-- ================= LAYER 2 (MIDDLE SERVER BLADE) ================= -->
+    <g id="Layer2" filter="url(#layerShadow)">
+      <!-- Top Face -->
+      <rect width="140" height="140" fill="url(#topGrad)" stroke="#475569" stroke-width="1.5" stroke-linejoin="round" transform="matrix(1, 0.5, -1, 0.5, 250, 170)"/>
+      <g transform="matrix(1, 0.5, -1, 0.5, 250, 170)">
+        <rect x="10" y="10" width="120" height="120" fill="none" stroke="#1E293B" stroke-width="2" rx="4"/>
+        <circle cx="70" cy="70" r="40" fill="none" stroke="#1E293B" stroke-width="2"/>
+      </g>
+
+      <!-- Left Face -->
+      <rect width="140" height="30" fill="url(#leftGrad)" stroke="#475569" stroke-width="1.5" stroke-linejoin="round" transform="matrix(-1, -0.5, 0, 1, 250, 310)"/>
+      <g transform="matrix(-1, -0.5, 0, 1, 250, 310)">
+        <g fill="#020617" stroke="#1E293B" stroke-width="1">
+          <rect x="75" y="5" width="6" height="20" rx="1"/>
+          <rect x="87" y="5" width="6" height="20" rx="1"/>
+          <rect x="99" y="5" width="6" height="20" rx="1"/>
+          <rect x="111" y="5" width="6" height="20" rx="1"/>
+          <rect x="123" y="5" width="6" height="20" rx="1"/>
+        </g>
+      </g>
+
+      <!-- Right Face -->
+      <rect width="140" height="30" fill="url(#rightGrad)" stroke="#475569" stroke-width="1.5" stroke-linejoin="round" transform="matrix(1, -0.5, 0, 1, 250, 310)"/>
+      <g transform="matrix(1, -0.5, 0, 1, 250, 310)">
+        <rect x="15" y="8" width="60" height="14" fill="#020617" stroke="#B400FF" stroke-width="1" rx="2"/>
+        <rect x="20" y="11" width="12" height="8" fill="#B400FF" rx="1" filter="url(#glow)"/>
+        <rect x="36" y="11" width="12" height="8" fill="#B400FF" rx="1" filter="url(#glow)"/>
+        <rect x="52" y="11" width="12" height="8" fill="#1E293B" rx="1"/>
+        <circle cx="120" cy="15" r="3.5" fill="#B400FF" filter="url(#glow)"/>
+        <circle cx="132" cy="15" r="3.5" fill="#B400FF" filter="url(#glow)"/>
+      </g>
+    </g>
+
+    <!-- Physical Connections (L1 -> L2) -->
+    <g id="Cables1to2">
+      <!-- Data Uplink -->
+      <line x1="320" y1="195" x2="320" y2="275" stroke="#00E5FF" stroke-width="3" stroke-linecap="round" filter="url(#glow)"/>
+      <circle cx="320" cy="195" r="3.5" fill="#00E5FF"/>
+      <circle cx="320" cy="275" r="3.5" fill="#00E5FF"/>
+      <!-- Structural Strut -->
+      <line x1="180" y1="195" x2="180" y2="275" stroke="#0F172A" stroke-width="5" stroke-linecap="round"/>
+      <line x1="180" y1="195" x2="180" y2="275" stroke="#334155" stroke-width="2" stroke-linecap="round"/>
+    </g>
+
+    <!-- ================= LAYER 1 (TOP MAIN NODE) ================= -->
+    <g id="Layer1" filter="url(#layerShadow)">
+      <!-- Top Face (CPU / Core) -->
+      <rect width="140" height="140" fill="url(#topGrad)" stroke="#475569" stroke-width="1.5" stroke-linejoin="round" transform="matrix(1, 0.5, -1, 0.5, 250, 60)"/>
+      <g transform="matrix(1, 0.5, -1, 0.5, 250, 60)">
+        <!-- Board Traces -->
+        <rect x="10" y="10" width="120" height="120" fill="none" stroke="#1E293B" stroke-width="2" rx="4"/>
+        <path d="M 70 50 L 70 20 L 120 20" fill="none" stroke="#00E5FF" stroke-width="2" stroke-linecap="round"/>
+        <path d="M 50 70 L 20 70 L 20 120" fill="none" stroke="#00E5FF" stroke-width="2" stroke-linecap="round"/>
+        <path d="M 90 70 L 120 70 L 120 120" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="round"/>
+        <path d="M 70 90 L 70 120" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="round"/>
+        <path d="M 120 45 L 100 45 L 100 20" fill="none" stroke="#B400FF" stroke-width="2" stroke-linecap="round"/>
+        
+        <!-- Main Core Processor -->
+        <rect x="46" y="46" width="48" height="48" fill="#020617" stroke="#00E5FF" stroke-width="1.5" rx="4"/>
+        <rect x="54" y="54" width="32" height="32" fill="#00E5FF" rx="3" filter="url(#glow)"/>
+        <rect x="62" y="62" width="16" height="16" fill="#FFFFFF" rx="1"/>
+      </g>
+
+      <!-- Left Face -->
+      <rect width="140" height="30" fill="url(#leftGrad)" stroke="#475569" stroke-width="1.5" stroke-linejoin="round" transform="matrix(-1, -0.5, 0, 1, 250, 200)"/>
+      <g transform="matrix(-1, -0.5, 0, 1, 250, 200)">
+        <g fill="#020617" stroke="#1E293B" stroke-width="1">
+          <rect x="15" y="5" width="6" height="20" rx="1"/>
+          <rect x="27" y="5" width="6" height="20" rx="1"/>
+          <rect x="39" y="5" width="6" height="20" rx="1"/>
+          <rect x="51" y="5" width="6" height="20" rx="1"/>
+          <rect x="63" y="5" width="6" height="20" rx="1"/>
+        </g>
+      </g>
+
+      <!-- Right Face (Front Ports) -->
+      <rect width="140" height="30" fill="url(#rightGrad)" stroke="#475569" stroke-width="1.5" stroke-linejoin="round" transform="matrix(1, -0.5, 0, 1, 250, 200)"/>
+      <g transform="matrix(1, -0.5, 0, 1, 250, 200)">
+        <rect x="15" y="8" width="30" height="14" fill="#020617" stroke="#00E5FF" stroke-width="1" rx="2"/>
+        <rect x="20" y="11" width="8" height="8" fill="#00E5FF" rx="1" filter="url(#glow)"/>
+        <rect x="32" y="11" width="8" height="8" fill="#00E5FF" rx="1" filter="url(#glow)"/>
+        <rect x="60" y="12" width="40" height="6" fill="#1E293B" rx="3"/>
+        <circle cx="115" cy="15" r="4" fill="#FF0055" filter="url(#glow)"/>
+        <circle cx="127" cy="15" r="4" fill="#00E5FF" filter="url(#glow)"/>
+      </g>
+    </g>
+
+  </g>
+</svg>

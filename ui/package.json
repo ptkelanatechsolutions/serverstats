@@ -1,0 +1,50 @@
+{
+  "name": "serverstat-ui",
+  "version": "1.0.0-alpha.1",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ptkelanatechsolutions/serverstats.git"
+  },
+  "keywords": [
+    "server",
+    "stats",
+    "monitoring",
+    "uptime",
+    "performance",
+    "metrics"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "bugs": {
+    "url": "https://github.com/ptkelanatechsolutions/serverstats/issues"
+  },
+  "homepage": "https://github.com/ptkelanatechsolutions/serverstats#readme",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf .next node_modules next-env.d.ts tsconfig.tsbuildinfo"
+  },
+  "dependencies": {
+    "lucide-react": "^1.22.0",
+    "next": "16.2.9",
+    "next-themes": "^0.4.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.9",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
