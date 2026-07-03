@@ -1,6 +1,6 @@
 {
   "name": "serverstat",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.3",
   "description": "Server monitoring dashboard — real-time CPU, GPU, RAM, Disk, Network & process stats",
   "type": "module",
   "bin": {

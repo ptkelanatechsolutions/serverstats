@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { spawn } from "node:child_process";
+import { spawn, execSync } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFileSync, existsSync, unlinkSync, writeFileSync, mkdirSync } from "node:fs";
@@ -66,48 +66,90 @@ interface CLIOptions {
   hasFlags: boolean;
 }
 
-// ---- State File (JSON) ----
-function getStatePath(): string {
-  return resolve(PACKAGE_ROOT, "app", "serverstat.json");
+// ---- State File — dual-write to survive npm upgrades & temp file cleanup ----
+import { tmpdir } from "node:os";
+
+function getStatePaths(): string[] {
+  // Written to two locations so a missing file never blocks stop:
+  // 1. os.tmpdir()/serverstat/    — survives npm upgrades
+  // 2. PACKAGE_ROOT/app/           — survives temp file cleanup
+  return [
+    resolve(PACKAGE_ROOT, "app", "serverstat.json"),
+    resolve(tmpdir(), "serverstat", "state.json"),
+  ];
 }
 
+/** Read from any available state file, trying all known paths + legacy PID. */
 function readStateFile(): ServerState | null {
-  const path = getStatePath();
-  if (!existsSync(path)) return null;
-  try {
-    const raw = readFileSync(path, "utf-8").trim();
-    const state = JSON.parse(raw) as ServerState;
-    if (!state.pid || !state.port) return null;
-    return state;
-  } catch {
-    // Corrupt — remove it
-    try {
-      unlinkSync(path);
-    } catch {
-      /* ignore */
+  // Try all state.json locations
+  for (const jsonPath of getStatePaths()) {
+    if (existsSync(jsonPath)) {
+      try {
+        const raw = readFileSync(jsonPath, "utf-8").trim();
+        const state = JSON.parse(raw) as ServerState;
+        if (state.pid && state.port) return state;
+      } catch {
+        try {
+          unlinkSync(jsonPath);
+        } catch {
+          /* ignore */
+        }
+      }
     }
-    return null;
   }
+
+  // Fallback: legacy .pid file from alpha.1
+  const legacyPid = resolve(PACKAGE_ROOT, "app", "serverstat.pid");
+  if (existsSync(legacyPid)) {
+    try {
+      const raw = readFileSync(legacyPid, "utf-8").trim();
+      const pid = parseInt(raw, 10);
+      if (pid && pid > 0) {
+        return { pid, port: 3000, host: "localhost", version: "legacy" };
+      }
+    } catch {
+      try {
+        unlinkSync(legacyPid);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  return null;
 }
 
+/** Write state to all known paths. */
 function writeStateFile(pid: number, port: number, host: string): string {
-  const path = getStatePath();
-  const dir = resolve(PACKAGE_ROOT, "app");
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   const state: ServerState = { pid, port, host, version: VERSION };
-  writeFileSync(path, JSON.stringify(state, null, 2) + "\n");
-  return path;
+  const content = JSON.stringify(state, null, 2) + "\n";
+  let first = "";
+  for (const path of getStatePaths()) {
+    const dir = resolve(path, "..");
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    writeFileSync(path, content);
+    if (!first) first = path;
+  }
+  return first;
 }
 
+/** Remove all state files (all paths + legacy). */
 function removeStateFile(): void {
-  const path = getStatePath();
-  if (existsSync(path)) {
+  for (const jsonPath of getStatePaths()) {
+    if (existsSync(jsonPath))
+      try {
+        unlinkSync(jsonPath);
+      } catch {
+        /* ignore */
+      }
+  }
+  const legacyPid = resolve(PACKAGE_ROOT, "app", "serverstat.pid");
+  if (existsSync(legacyPid))
     try {
-      unlinkSync(path);
+      unlinkSync(legacyPid);
     } catch {
       /* ignore */
     }
-  }
 }
 
 // ---- Process helpers ----
@@ -159,14 +201,74 @@ function killDaemon(): boolean {
   return true;
 }
 
-/** Public stop — calls killDaemon and exits the process. */
-function stopDaemon(): void {
-  const killed = killDaemon();
-  if (!killed) {
-    console.error("Error: ServerStat is not running.");
-    process.exit(1);
+/** Try to find and kill a process by name or listening port. */
+function findAndKillDaemon(): boolean {
+  try {
+    // Strategy 1 (Linux/macOS): find by process name (argv0 = "serverstat-daemon")
+    if (process.platform === "linux" || process.platform === "darwin") {
+      const pgrep = execSync(
+        `pgrep -x serverstat-daemon 2>/dev/null || pgrep -f "next start" 2>/dev/null || true`,
+        { encoding: "utf-8", timeout: 3000 },
+      ).trim();
+      if (pgrep) {
+        const pids = pgrep
+          .split("\n")
+          .map(Number)
+          .filter((p) => p > 0);
+        for (const pid of pids) {
+          try {
+            process.kill(pid, "SIGTERM");
+          } catch {
+            /* ignore */
+          }
+        }
+        return pids.length > 0;
+      }
+    }
+
+    // Strategy 2 (Windows): scan common ports via PowerShell
+    if (process.platform === "win32") {
+      const ps = execSync(
+        `powershell -NoProfile -Command "Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -ge 3000 -and $_.LocalPort -le 3010 } | Select-Object -ExpandProperty OwningProcess -Unique"`,
+        { encoding: "utf-8", timeout: 3000 },
+      ).trim();
+      const pids = ps
+        .split("\n")
+        .map(Number)
+        .filter((p) => p > 0);
+      for (const pid of pids) {
+        try {
+          process.kill(pid, "SIGTERM");
+        } catch {
+          /* ignore */
+        }
+      }
+      return pids.length > 0;
+    }
+  } catch {
+    // Command not available — fall through
   }
-  console.log("✅ ServerStat stopped.");
+  return false;
+}
+
+/** Public stop — tries state file → process name → port probe. Exits the process. */
+async function stopDaemon(): Promise<void> {
+  // 1. Try state file (JSON + legacy PID)
+  if (killDaemon()) {
+    console.log("✅ ServerStat stopped.");
+    process.exit(0);
+  }
+
+  // 2. Try finding by process name (serverstat-daemon, next start, node)
+  if (findAndKillDaemon()) {
+    console.log("✅ ServerStat stopped (found and killed by process name).");
+    removeStateFile();
+    process.exit(0);
+  }
+
+  console.log("ℹ️  ServerStat is not running.");
+  console.log("   No daemon process was found.");
+  console.log("   To start: serverstat");
   process.exit(0);
 }
 
@@ -311,11 +413,13 @@ async function startServer(port: number, host: string): Promise<void> {
     NODE_PATH: resolve(PACKAGE_ROOT, "node_modules"),
   };
 
+  // Set argv0 so the process appears as "serverstat-daemon" in htop/btop/ps
   const child = spawn(process.execPath, [nextEntry, "start"], {
     cwd: UI_DIR,
     env,
     stdio: ["ignore", "ignore", "ignore"],
     detached: true,
+    argv0: "serverstat-daemon",
   });
 
   child.unref();
@@ -342,7 +446,7 @@ async function main(): Promise<void> {
 
   // Handle stop command
   if (args[0] === "stop") {
-    stopDaemon();
+    await stopDaemon();
   }
 
   const options = parseArgs(process.argv);
